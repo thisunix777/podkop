@@ -7,6 +7,12 @@
 
 return view.extend({
     async render() {
+        document.getElementsByTagName('head')[0].insertAdjacentHTML('beforeend', `
+            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+            <meta http-equiv="Pragma" content="no-cache">
+            <meta http-equiv="Expires" content="0">
+        `);
+
         var m, s, o;
 
         m = new form.Map('podkop', _('Podkop configuration'), null, ['main', 'second']);
