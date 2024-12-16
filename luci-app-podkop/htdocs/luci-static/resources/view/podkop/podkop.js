@@ -7,18 +7,32 @@
 
 return view.extend({
     async render() {
-        document.getElementsByTagName('head')[0].insertAdjacentHTML('beforeend', `
-            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-            <meta http-equiv="Pragma" content="no-cache">
-            <meta http-equiv="Expires" content="0">
-        `);
-
-        var m, s, o;
-
+        let m, s, o;
         m = new form.Map('podkop', _('Podkop configuration'), null, ['main', 'second']);
+
+        let versionOption = form.Value.extend({
+            load: function (section_id) {
+                console.log('Loading version for section:', section_id);
+                return L.resolveDefault(L.uci.get('podkop', section_id, 'version'), '')
+                    .then(version => {
+                        console.log('Loaded version:', version);
+                        if (version) {
+                            m.title = _('Podkop configuration') + ' v' + version;
+                            if (!window.location.search.includes('v=')) {
+                                const newUrl = window.location.pathname + '?v=' + version;
+                                window.history.replaceState(null, '', newUrl);
+                            }
+                        }
+                        return version;
+                    });
+            }
+        });
 
         s = m.section(form.TypedSection, 'main');
         s.anonymous = true;
+
+        o = s.option(versionOption, 'version');
+        o.hidden = true;
 
         // Basic Settings Tab
         o = s.tab('basic', _('Basic Settings'));
