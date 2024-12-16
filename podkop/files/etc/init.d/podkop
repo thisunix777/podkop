@@ -7,7 +7,7 @@ script=$(readlink "$initscript")
 NAME="$(basename ${script:-$initscript})"
 config_load "$NAME"
 
-EXTRA_COMMANDS="list_update add_route_interface check_proxy check_nft check_github check_logs check_all check_three"
+EXTRA_COMMANDS="list_update add_route_interface check_proxy check_nft check_github check_logs check_all check_three show_config"
 EXTRA_HELP="        list_update     Updating domain and subnet lists
         add_route_interface  Adding route for interface
         sing_box_config_vless For test vless string
@@ -16,7 +16,8 @@ EXTRA_HELP="        list_update     Updating domain and subnet lists
         check_github        Check GitHub connectivity and lists availability
         check_logs         Show podkop logs from system journal
         check_all          Run all checks
-        check_three         Run check_proxy, check_nft and check_github"
+        check_three         Run check_proxy, check_nft and check_github
+        show_config         Show current configuration with masked sensitive data"
 
 [ ! -L /usr/sbin/podkop ] && ln -s /etc/init.d/podkop /usr/sbin/podkop
 
@@ -1220,6 +1221,33 @@ check_logs() {
         nolog "Error: logread command not found"
         return 1
     fi
+}
+
+show_config() {
+    nolog "Current podkop configuration:"
+    
+    if [ ! -f /etc/config/podkop ]; then
+        nolog "Configuration file not found"
+        return 1
+    fi
+
+    # Создаем временный файл для обработанного конфига
+    tmp_config=$(mktemp)
+    
+    # Копируем и маскируем конфиденциальные данные
+    cat /etc/config/podkop | sed \
+        -e 's/\(option proxy_string\).*/\1 '\''<masked>'\''/g' \
+        -e 's/\(option outbound_json\).*/\1 '\''<masked>'\''/g' \
+        -e 's/\(option second_proxy_string\).*/\1 '\''<masked>'\''/g' \
+        -e 's/\(option second_outbound_json\).*/\1 '\''<masked>'\''/g' \
+        -e 's/\(vless:\/\/[^@]*@\)/vless:\/\/<masked>@/g' \
+        -e 's/\(ss:\/\/[^@]*@\)/ss:\/\/<masked>@/g' \
+        -e 's/\(pbk=[^&]*\)/pbk=<masked>/g' \
+        -e 's/\(sid=[^&]*\)/sid=<masked>/g' \
+        > "$tmp_config"
+
+    cat "$tmp_config"
+    rm -f "$tmp_config"
 }
 
 check_three() {
