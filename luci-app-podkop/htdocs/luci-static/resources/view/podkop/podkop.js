@@ -691,28 +691,12 @@ return view.extend({
                     const formattedOutput = formatDiagnosticOutput(res.stdout || _('No output'));
 
                     const modalElement = ui.showModal(_('Full Diagnostic Results'), [
-                        E('div', {
-                            style:
-                                'max-height: 70vh;' +
-                                'overflow-y: auto;' +
-                                'margin: 1em 0;' +
-                                'padding: 1.5em;' +
-                                'background: #f8f9fa;' +
-                                'border: 1px solid #e9ecef;' +
-                                'border-radius: 4px;' +
-                                'font-family: monospace;' +
-                                'white-space: pre-wrap;' +
-                                'word-wrap: break-word;' +
-                                'line-height: 1.5;' +
-                                'font-size: 14px;'
-                        }, [
-                            E('pre', { style: 'margin: 0;' }, formattedOutput)
+                        E('div', { style: 'max-height: 70vh; overflow-y: auto;' }, [
+                            E('pre', { class: 'cbi-value-field' }, formattedOutput)
                         ]),
-                        E('div', {
-                            style: 'display: flex; justify-content: space-between; margin-top: 1em;'
-                        }, [
+                        E('div', { style: 'display: flex; justify-content: space-between; margin-top: 1em;' }, [
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-save',
                                 'click': function () {
                                     const textarea = document.createElement('textarea');
                                     textarea.value = '```txt\n' + formattedOutput + '\n```';
@@ -720,6 +704,7 @@ return view.extend({
                                     textarea.select();
                                     try {
                                         document.execCommand('copy');
+                                        ui.hideModal();
                                     } catch (err) {
                                         ui.addNotification(null, E('p', {}, _('Failed to copy: ') + err.message));
                                     }
@@ -727,16 +712,14 @@ return view.extend({
                                 }
                             }, _('Copy to Clipboard')),
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-neutral',
                                 'click': ui.hideModal
                             }, _('Close'))
                         ])
                     ], 'large');
 
                     if (modalElement && modalElement.parentElement) {
-                        modalElement.parentElement.style.width = '90%';
-                        modalElement.parentElement.style.maxWidth = '1200px';
-                        modalElement.parentElement.style.margin = '2rem auto';
+                        modalElement.parentElement.classList.add('modal-overlay-large');
                     }
                 });
         };
@@ -752,28 +735,12 @@ return view.extend({
                     const formattedOutput = formatDiagnosticOutput(res.stdout || _('No output'));
 
                     const modalElement = ui.showModal(_('System Logs'), [
-                        E('div', {
-                            style:
-                                'max-height: 70vh;' +
-                                'overflow-y: auto;' +
-                                'margin: 1em 0;' +
-                                'padding: 1.5em;' +
-                                'background: #f8f9fa;' +
-                                'border: 1px solid #e9ecef;' +
-                                'border-radius: 4px;' +
-                                'font-family: monospace;' +
-                                'white-space: pre-wrap;' +
-                                'word-wrap: break-word;' +
-                                'line-height: 1.5;' +
-                                'font-size: 14px;'
-                        }, [
-                            E('pre', { style: 'margin: 0;' }, formattedOutput)
+                        E('div', { style: 'max-height: 70vh; overflow-y: auto;' }, [
+                            E('pre', { class: 'cbi-value-field' }, formattedOutput)
                         ]),
-                        E('div', {
-                            style: 'display: flex; justify-content: space-between; margin-top: 1em;'
-                        }, [
+                        E('div', { style: 'display: flex; justify-content: space-between; margin-top: 1em;' }, [
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-save',
                                 'click': function () {
                                     const textarea = document.createElement('textarea');
                                     textarea.value = '```txt\n' + formattedOutput + '\n```';
@@ -781,6 +748,7 @@ return view.extend({
                                     textarea.select();
                                     try {
                                         document.execCommand('copy');
+                                        ui.hideModal();
                                     } catch (err) {
                                         ui.addNotification(null, E('p', {}, _('Failed to copy: ') + err.message));
                                     }
@@ -788,16 +756,14 @@ return view.extend({
                                 }
                             }, _('Copy to Clipboard')),
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-neutral',
                                 'click': ui.hideModal
                             }, _('Close'))
                         ])
                     ], 'large');
 
                     if (modalElement && modalElement.parentElement) {
-                        modalElement.parentElement.style.width = '90%';
-                        modalElement.parentElement.style.maxWidth = '1200px';
-                        modalElement.parentElement.style.margin = '2rem auto';
+                        modalElement.parentElement.classList.add('modal-overlay-large');
                     }
                 });
         };
@@ -832,28 +798,12 @@ return view.extend({
                     const formattedOutput = formatDiagnosticOutput(res.stdout || _('No output'));
 
                     const modalElement = ui.showModal(_('Podkop Configuration'), [
-                        E('div', {
-                            style:
-                                'max-height: 70vh;' +
-                                'overflow-y: auto;' +
-                                'margin: 1em 0;' +
-                                'padding: 1.5em;' +
-                                'background: #f8f9fa;' +
-                                'border: 1px solid #e9ecef;' +
-                                'border-radius: 4px;' +
-                                'font-family: monospace;' +
-                                'white-space: pre-wrap;' +
-                                'word-wrap: break-word;' +
-                                'line-height: 1.5;' +
-                                'font-size: 14px;'
-                        }, [
-                            E('pre', { style: 'margin: 0;' }, formattedOutput)
+                        E('div', { class: 'cbi-section' }, [
+                            E('pre', { class: 'cbi-value-field' }, formattedOutput)
                         ]),
-                        E('div', {
-                            style: 'display: flex; justify-content: space-between; margin-top: 1em;'
-                        }, [
+                        E('div', { style: 'display: flex; justify-content: space-between; margin-top: 1em;' }, [
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-save',
                                 'click': function () {
                                     const textarea = document.createElement('textarea');
                                     textarea.value = '```\n' + formattedOutput + '\n```';
@@ -861,6 +811,7 @@ return view.extend({
                                     textarea.select();
                                     try {
                                         document.execCommand('copy');
+                                        ui.hideModal();
                                     } catch (err) {
                                         ui.addNotification(null, E('p', {}, _('Failed to copy: ') + err.message));
                                     }
@@ -868,16 +819,14 @@ return view.extend({
                                 }
                             }, _('Copy to Clipboard')),
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-neutral',
                                 'click': ui.hideModal
                             }, _('Close'))
                         ])
                     ], 'large');
 
                     if (modalElement && modalElement.parentElement) {
-                        modalElement.parentElement.style.width = '90%';
-                        modalElement.parentElement.style.maxWidth = '1200px';
-                        modalElement.parentElement.style.margin = '2rem auto';
+                        modalElement.parentElement.classList.add('modal-overlay-large');
                     }
                 });
         };
