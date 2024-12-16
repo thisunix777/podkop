@@ -8,31 +8,22 @@
 return view.extend({
     async render() {
         let m, s, o;
-        m = new form.Map('podkop', _('Podkop configuration'), null, ['main', 'second']);
 
-        let versionOption = form.Value.extend({
-            load: function (section_id) {
-                console.log('Loading version for section:', section_id);
-                return L.resolveDefault(L.uci.get('podkop', section_id, 'version'), '')
-                    .then(version => {
-                        console.log('Loaded version:', version);
-                        if (version) {
-                            m.title = _('Podkop configuration') + ' v' + version;
-                            if (!window.location.search.includes('v=')) {
-                                const newUrl = window.location.pathname + '?v=' + version;
-                                window.history.replaceState(null, '', newUrl);
-                            }
-                        }
-                        return version;
-                    });
+        m = new form.Map('podkop', _('Podkop'), null, ['main', 'second']);
+
+        L.uci.load('podkop').then(() => {
+            const version = L.uci.get('podkop', 'main', 'version') || '';
+            if (version) {
+                m.title = _('Podkop') + ' v' + version;
+                if (!window.location.search.includes('v=')) {
+                    const newUrl = window.location.pathname + '?v=' + version;
+                    window.history.replaceState(null, '', newUrl);
+                }
             }
         });
 
         s = m.section(form.TypedSection, 'main');
         s.anonymous = true;
-
-        o = s.option(versionOption, 'version');
-        o.hidden = true;
 
         // Basic Settings Tab
         o = s.tab('basic', _('Basic Settings'));
@@ -828,6 +819,67 @@ return view.extend({
                     }, _('Close'))
                 ])
             ]);
+        };
+
+        o = s.taboption('diagnostics', form.Button, '_show_config');
+        o.title = _('Show Config');
+        o.description = _('Show current podkop configuration with masked sensitive data');
+        o.inputtitle = _('Show Config');
+        o.inputstyle = 'apply';
+        o.onclick = function () {
+            return fs.exec('/etc/init.d/podkop', ['show_config'])
+                .then(function (res) {
+                    const formattedOutput = formatDiagnosticOutput(res.stdout || _('No output'));
+
+                    const modalElement = ui.showModal(_('Podkop Configuration'), [
+                        E('div', {
+                            style:
+                                'max-height: 70vh;' +
+                                'overflow-y: auto;' +
+                                'margin: 1em 0;' +
+                                'padding: 1.5em;' +
+                                'background: #f8f9fa;' +
+                                'border: 1px solid #e9ecef;' +
+                                'border-radius: 4px;' +
+                                'font-family: monospace;' +
+                                'white-space: pre-wrap;' +
+                                'word-wrap: break-word;' +
+                                'line-height: 1.5;' +
+                                'font-size: 14px;'
+                        }, [
+                            E('pre', { style: 'margin: 0;' }, formattedOutput)
+                        ]),
+                        E('div', {
+                            style: 'display: flex; justify-content: space-between; margin-top: 1em;'
+                        }, [
+                            E('button', {
+                                'class': 'btn',
+                                'click': function () {
+                                    const textarea = document.createElement('textarea');
+                                    textarea.value = '```\n' + formattedOutput + '\n```';
+                                    document.body.appendChild(textarea);
+                                    textarea.select();
+                                    try {
+                                        document.execCommand('copy');
+                                    } catch (err) {
+                                        ui.addNotification(null, E('p', {}, _('Failed to copy: ') + err.message));
+                                    }
+                                    document.body.removeChild(textarea);
+                                }
+                            }, _('Copy to Clipboard')),
+                            E('button', {
+                                'class': 'btn',
+                                'click': ui.hideModal
+                            }, _('Close'))
+                        ])
+                    ], 'large');
+
+                    if (modalElement && modalElement.parentElement) {
+                        modalElement.parentElement.style.width = '90%';
+                        modalElement.parentElement.style.maxWidth = '1200px';
+                        modalElement.parentElement.style.margin = '2rem auto';
+                    }
+                });
         };
 
         return m.render();
