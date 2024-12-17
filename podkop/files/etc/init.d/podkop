@@ -1227,8 +1227,8 @@ check_nft() {
     fi
 
     # Показываем правила с счетчиками
-    # nolog "Current chains and rules:"
-    # nft list table inet PodkopTable | grep "chain\|counter"
+    nolog "Current chains and rules:"
+    nft list table inet PodkopTable | grep "chain\|counter"
 
     nolog "NFT check completed"
 }
