@@ -1117,53 +1117,60 @@ sing_box_config_check() {
 }
 
 check_proxy() {
-   if ! command -v sing-box >/dev/null 2>&1; then
-       nolog "sing-box is not installed"
-       return 1
-   fi
+    if ! command -v sing-box >/dev/null 2>&1; then
+        nolog "sing-box is not installed"
+        return 1
+    fi
 
-   if [ ! -f $SING_BOX_CONFIG ]; then
-       nolog "Configuration file not found"
-       return 1
-   fi
+    if [ ! -f $SING_BOX_CONFIG ]; then
+        nolog "Configuration file not found"
+        return 1
+    fi
 
-   nolog "Checking sing-box configuration..."
+    nolog "Checking sing-box configuration..."
 
-   if ! sing-box -c $SING_BOX_CONFIG check >/dev/null; then
-       nolog "Invalid configuration"
-       return 1
-   fi
+    if ! sing-box -c $SING_BOX_CONFIG check >/dev/null; then
+        nolog "Invalid configuration"
+        return 1
+    fi
 
-   jq '
-       walk(
-           if type == "object" then
-               with_entries(
-                   if [.key] | inside(["uuid", "server", "server_name", "password", "public_key", "short_id"]) then 
-                       .value = "MASKED" 
-                   else . end
-               )
-           else . end
-       )' $SING_BOX_CONFIG
+    jq '
+        walk(
+            if type == "object" then
+                with_entries(
+                    if [.key] | inside(["uuid", "server", "server_name", "password", "public_key", "short_id"]) then 
+                        .value = "MASKED" 
+                    else . end
+                )
+            else . end
+        )' $SING_BOX_CONFIG
 
-   nolog "Checking proxy connection..."
+    nolog "Checking proxy connection..."
 
-   for attempt in `seq 1 5`; do
-       response=$(sing-box tools fetch ifconfig.me -D /etc/sing-box 2>/dev/null)
-       if [[ $response =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-           nolog "Proxy check completed successfully"
-           echo "$response" | sed -n 's/^[0-9]\+\.[0-9]\+\.[0-9]\+\.\([0-9]\+\)$/X.X.X.\1/p'
-           return 0
-       fi
-       if [ $attempt -eq 5 ]; then
-           nolog "Failed to get valid IP address after 5 attempts"
-           if [ -z "$response" ]; then
-               nolog "Error: Empty response"
-           else
-               nolog "Error response: $response"
-           fi
-           return 1
-       fi
-   done
+    for attempt in `seq 1 5`; do
+        response=$(sing-box tools fetch ifconfig.me -D /etc/sing-box 2>/dev/null)
+        if echo "$response" | grep -q "^<html\|403 Forbidden"; then
+            continue
+        fi
+        if [[ $response =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            nolog "Proxy check completed successfully"
+            echo "$response" | sed -n 's/^[0-9]\+\.[0-9]\+\.[0-9]\+\.\([0-9]\+\)$/X.X.X.\1/p'
+            return 0
+        elif echo "$response" | grep -q "^[0-9a-fA-F:]*::[0-9a-fA-F:]*$\|^[0-9a-fA-F:]\+$"; then
+            nolog "Proxy check completed successfully"
+            echo "$response" | sed 's/\([0-9a-fA-F]\+:[0-9a-fA-F]\+:[0-9a-fA-F]\+\):.*/\1:XXXX:XXXX:XXXX/'
+            return 0
+        fi
+        if [ $attempt -eq 5 ]; then
+            nolog "Failed to get valid IP address after 5 attempts"
+            if [ -z "$response" ]; then
+                nolog "Error: Empty response"
+            else
+                nolog "Error response: $response"
+            fi
+            return 1
+        fi
+    done
 }
 
 check_nft() {
@@ -1172,12 +1179,18 @@ check_nft() {
         return 1
     fi
 
+    # Проверяем статус second_enable и all_traffic_from_ip_enabled
+    local second_enable=$(uci -q get podkop.second.second_enable)
+    local all_traffic_enabled=$(uci -q get podkop.main.all_traffic_from_ip_enabled)
+
     nolog "Checking PodkopTable rules..."
     
-    # Список всех возможных сетов
-    local sets="podkop_domains podkop_subnets podkop2_domains podkop2_subnets localv4"
+    # Список базовых сетов
+    local sets="podkop_domains podkop_subnets"
     
     nolog "Sets statistics:"
+    
+    # Проверяем и выводим статус базовых сетов
     for set_name in $sets; do
         if nft list set inet PodkopTable $set_name >/dev/null 2>&1; then
             local count=$(nft list set inet PodkopTable $set_name 2>/dev/null | grep -c ",")
@@ -1187,9 +1200,35 @@ check_nft() {
         fi
     done
 
+    # Проверяем и выводим статус localv4
+    if [ "$all_traffic_enabled" = "1" ]; then
+        if nft list set inet PodkopTable localv4 >/dev/null 2>&1; then
+            local count=$(nft list set inet PodkopTable localv4 2>/dev/null | grep -c ",")
+            nolog "- localv4: $count elements"
+        else
+            nolog "- localv4: not found"
+        fi
+    else
+        nolog "- Full traffic redirection is disabled (not error)"
+    fi
+
+    # Проверяем и выводим статус second podkop сетов
+    if [ "$second_enable" = "1" ]; then
+        for set_name in podkop2_domains podkop2_subnets; do
+            if nft list set inet PodkopTable $set_name >/dev/null 2>&1; then
+                local count=$(nft list set inet PodkopTable $set_name 2>/dev/null | grep -c ",")
+                nolog "- $set_name: $count elements"
+            else
+                nolog "- $set_name: not found"
+            fi
+        done
+    else
+        nolog "- Secondary configuration is disabled (not error)"
+    fi
+
     # Показываем правила с счетчиками
-    nolog "Current chains and rules:"
-    nft list table inet PodkopTable | grep "chain\|counter"
+    # nolog "Current chains and rules:"
+    # nft list table inet PodkopTable | grep "chain\|counter"
 
     nolog "NFT check completed"
 }
