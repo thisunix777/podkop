@@ -1154,11 +1154,11 @@ check_proxy() {
        fi
        if [[ $response =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
            ip=$(echo "$response" | sed -n 's/^[0-9]\+\.[0-9]\+\.[0-9]\+\.\([0-9]\+\)$/X.X.X.\1/p')
-           nolog "$ip - should match VPS IP"
+           nolog "$ip - should match proxy IP"
            return 0
        elif echo "$response" | grep -q "^[0-9a-fA-F:]*::[0-9a-fA-F:]*$\|^[0-9a-fA-F:]\+$"; then
            ip=$(echo "$response" | sed 's/\([0-9a-fA-F]\+:[0-9a-fA-F]\+:[0-9a-fA-F]\+\):.*/\1:XXXX:XXXX:XXXX/')
-           nolog "$ip - should match VPS IP"
+           nolog "$ip - should match proxy IP"
            return 0
        fi
        if [ $attempt -eq 5 ]; then
@@ -1288,14 +1288,14 @@ show_config() {
     
     # Копируем и маскируем конфиденциальные данные
     cat /etc/config/podkop | sed \
-        -e 's/\(option proxy_string\).*/\1 '\''<masked>'\''/g' \
-        -e 's/\(option outbound_json\).*/\1 '\''<masked>'\''/g' \
-        -e 's/\(option second_proxy_string\).*/\1 '\''<masked>'\''/g' \
-        -e 's/\(option second_outbound_json\).*/\1 '\''<masked>'\''/g' \
-        -e 's/\(vless:\/\/[^@]*@\)/vless:\/\/<masked>@/g' \
-        -e 's/\(ss:\/\/[^@]*@\)/ss:\/\/<masked>@/g' \
-        -e 's/\(pbk=[^&]*\)/pbk=<masked>/g' \
-        -e 's/\(sid=[^&]*\)/sid=<masked>/g' \
+        -e 's/\(option proxy_string\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option outbound_json\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option second_proxy_string\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option second_outbound_json\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(vless:\/\/[^@]*@\)/vless:\/\/MASKED@/g' \
+        -e 's/\(ss:\/\/[^@]*@\)/ss:\/\/MASKED@/g' \
+        -e 's/\(pbk=[^&]*\)/pbk=MASKED/g' \
+        -e 's/\(sid=[^&]*\)/sid=MASKED/g' \
         > "$tmp_config"
 
     cat "$tmp_config"
