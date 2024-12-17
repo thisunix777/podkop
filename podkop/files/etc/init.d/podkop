@@ -1117,60 +1117,60 @@ sing_box_config_check() {
 }
 
 check_proxy() {
-    if ! command -v sing-box >/dev/null 2>&1; then
-        nolog "sing-box is not installed"
-        return 1
-    fi
+   if ! command -v sing-box >/dev/null 2>&1; then
+       nolog "sing-box is not installed"
+       return 1
+   fi
 
-    if [ ! -f $SING_BOX_CONFIG ]; then
-        nolog "Configuration file not found"
-        return 1
-    fi
+   if [ ! -f $SING_BOX_CONFIG ]; then
+       nolog "Configuration file not found"
+       return 1
+   fi
 
-    nolog "Checking sing-box configuration..."
+   nolog "Checking sing-box configuration..."
 
-    if ! sing-box -c $SING_BOX_CONFIG check >/dev/null; then
-        nolog "Invalid configuration"
-        return 1
-    fi
+   if ! sing-box -c $SING_BOX_CONFIG check >/dev/null; then
+       nolog "Invalid configuration"
+       return 1
+   fi
 
-    jq '
-        walk(
-            if type == "object" then
-                with_entries(
-                    if [.key] | inside(["uuid", "server", "server_name", "password", "public_key", "short_id"]) then 
-                        .value = "MASKED" 
-                    else . end
-                )
-            else . end
-        )' $SING_BOX_CONFIG
+   jq '
+       walk(
+           if type == "object" then
+               with_entries(
+                   if [.key] | inside(["uuid", "server", "server_name", "password", "public_key", "short_id"]) then 
+                       .value = "MASKED" 
+                   else . end
+               )
+           else . end
+       )' $SING_BOX_CONFIG
 
-    nolog "Checking proxy connection..."
+   nolog "Checking proxy connection..."
 
-    for attempt in `seq 1 5`; do
-        response=$(sing-box tools fetch ifconfig.me -D /etc/sing-box 2>/dev/null)
-        if echo "$response" | grep -q "^<html\|403 Forbidden"; then
-            continue
-        fi
-        if [[ $response =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            nolog "Proxy check completed successfully"
-            echo "$response" | sed -n 's/^[0-9]\+\.[0-9]\+\.[0-9]\+\.\([0-9]\+\)$/X.X.X.\1/p'
-            return 0
-        elif echo "$response" | grep -q "^[0-9a-fA-F:]*::[0-9a-fA-F:]*$\|^[0-9a-fA-F:]\+$"; then
-            nolog "Proxy check completed successfully"
-            echo "$response" | sed 's/\([0-9a-fA-F]\+:[0-9a-fA-F]\+:[0-9a-fA-F]\+\):.*/\1:XXXX:XXXX:XXXX/'
-            return 0
-        fi
-        if [ $attempt -eq 5 ]; then
-            nolog "Failed to get valid IP address after 5 attempts"
-            if [ -z "$response" ]; then
-                nolog "Error: Empty response"
-            else
-                nolog "Error response: $response"
-            fi
-            return 1
-        fi
-    done
+   for attempt in `seq 1 5`; do
+       response=$(sing-box tools fetch ifconfig.me -D /etc/sing-box 2>/dev/null)
+       if echo "$response" | grep -q "^<html\|403 Forbidden"; then
+           continue
+       fi
+       if [[ $response =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+           ip=$(echo "$response" | sed -n 's/^[0-9]\+\.[0-9]\+\.[0-9]\+\.\([0-9]\+\)$/X.X.X.\1/p')
+           nolog "$ip - should match VPS IP"
+           return 0
+       elif echo "$response" | grep -q "^[0-9a-fA-F:]*::[0-9a-fA-F:]*$\|^[0-9a-fA-F:]\+$"; then
+           ip=$(echo "$response" | sed 's/\([0-9a-fA-F]\+:[0-9a-fA-F]\+:[0-9a-fA-F]\+\):.*/\1:XXXX:XXXX:XXXX/')
+           nolog "$ip - should match VPS IP"
+           return 0
+       fi
+       if [ $attempt -eq 5 ]; then
+           nolog "Failed to get valid IP address after 5 attempts"
+           if [ -z "$response" ]; then
+               nolog "Error: Empty response"
+           else
+               nolog "Error response: $response"
+           fi
+           return 1
+       fi
+   done
 }
 
 check_nft() {
@@ -1226,33 +1226,41 @@ check_nft() {
         nolog "- Secondary configuration is disabled (not error)"
     fi
 
-    # Показываем правила с счетчиками
-    nolog "Current chains and rules:"
+    nolog "\nCurrent chains and rules:"
     nft list table inet PodkopTable | grep "chain\|counter"
 
     nolog "NFT check completed"
 }
 
-check_github() {
-    nolog "Checking GitHub connectivity..."
-    
-    if ! curl -m 3 github.com; then
-        nolog "Error: Cannot connect to GitHub"
-        return 1
-    fi
-    nolog "GitHub is accessible"
-    
-    nolog "Checking lists availability:"
-    for url in "$DOMAINS_RU_INSIDE" "$DOMAINS_RU_OUTSIDE" "$DOMAINS_UA" "$DOMAINS_YOUTUBE" \
-              "$SUBNETS_TWITTER" "$SUBNETS_META" "$SUBNETS_DISCORD"; do
-        local list_name=$(basename "$url")
-        wget -q -O /dev/null "$url"
-        if [ $? -eq 0 ]; then
-            nolog "- $list_name: available"
-        else
-            nolog "- $list_name: not available"
-        fi
-    done
+check_github() { 
+   if ! curl -m 3 github.com; then
+       nolog "Error: Cannot connect to GitHub"
+       return 1
+   fi
+   
+   nolog "Checking lists availability:"
+   local all_available=true
+   local output=""
+   
+   for url in "$DOMAINS_RU_INSIDE" "$DOMAINS_RU_OUTSIDE" "$DOMAINS_UA" "$DOMAINS_YOUTUBE" \
+             "$SUBNETS_TWITTER" "$SUBNETS_META" "$SUBNETS_DISCORD"; do
+       local list_name=$(basename "$url")
+       wget -q -O /dev/null "$url"
+       if [ $? -eq 0 ]; then
+           output="${output}- $list_name: available\n"
+       else
+           output="${output}- $list_name: not available\n"
+           all_available=false
+       fi
+   done
+   
+   if [ "$all_available" = true ]; then
+       nolog "all lists: available"
+   else
+       printf "$output" | while IFS= read -r line; do
+           nolog "$line"
+       done
+   fi
 }
 
 check_logs() {
