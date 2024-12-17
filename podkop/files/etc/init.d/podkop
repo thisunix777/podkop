@@ -1149,16 +1149,17 @@ check_proxy() {
 
     for attempt in `seq 1 5`; do
         response=$(sing-box tools fetch ifconfig.me -D /etc/sing-box 2>/dev/null)
-        if ! echo "$response" | grep -q "403 Forbidden"; then
+        if [[ $response =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             nolog "Proxy check completed successfully"
-            #echo "$response" | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)/XXX.\2.\3.\4/'
             echo "$response" | sed -n 's/^[0-9]\+\.[0-9]\+\.[0-9]\+\.\([0-9]\+\)$/X.X.X.\1/p'
             return 0
         fi
+        if [ $attempt -eq 5 ]; then
+            nolog "Failed to get valid IP address after 5 attempts"
+            nolog "Error response: $response"
+            return 1
+        fi
     done
-
-    nolog "Failed to get a non-403 response after 5 attempts"
-    return 1
 }
 
 check_nft() {
