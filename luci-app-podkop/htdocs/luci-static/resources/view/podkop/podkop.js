@@ -7,9 +7,20 @@
 
 return view.extend({
     async render() {
-        var m, s, o;
+        let m, s, o;
 
-        m = new form.Map('podkop', _('Podkop configuration'), null, ['main', 'second']);
+        m = new form.Map('podkop', _('Podkop'), null, ['main', 'second']);
+
+        L.uci.load('podkop').then(() => {
+            const version = L.uci.get('podkop', 'main', 'version') || '';
+            if (version) {
+                m.title = _('Podkop') + ' v' + version;
+                if (!window.location.search.includes('v=')) {
+                    const newUrl = window.location.pathname + '?v=' + version;
+                    window.history.replaceState(null, '', newUrl);
+                }
+            }
+        });
 
         s = m.section(form.TypedSection, 'main');
         s.anonymous = true;
@@ -44,9 +55,19 @@ return view.extend({
             }
 
             try {
-                const parsed = JSON.parse(value);
-                if (!parsed.type || !parsed.server || !parsed.server_port) {
-                    return _('JSON must contain at least type, server and server_port fields');
+                // Оборачиваем множественные JSON объекты в массив для валидации
+                const wrappedValue = `[${value}]`;
+                const parsedArray = JSON.parse(wrappedValue);
+
+                // Проверяем каждый объект в массиве
+                for (const parsed of parsedArray) {
+                    if (parsed.type === 'urltest') {
+                        if (!parsed.tag || !Array.isArray(parsed.outbounds) || parsed.outbounds.length === 0) {
+                            return _('For urltest type, JSON must contain tag and non-empty outbounds array');
+                        }
+                    } else if (!parsed.type || !parsed.server || !parsed.server_port) {
+                        return _('JSON must contain at least type, server and server_port fields');
+                    }
                 }
                 return true;
             } catch (e) {
@@ -469,9 +490,19 @@ return view.extend({
             }
 
             try {
-                const parsed = JSON.parse(value);
-                if (!parsed.type || !parsed.server || !parsed.server_port) {
-                    return _('JSON must contain at least type, server and server_port fields');
+                // Оборачиваем множественные JSON объекты в массив для валидации
+                const wrappedValue = `[${value}]`;
+                const parsedArray = JSON.parse(wrappedValue);
+
+                // Проверяем каждый объект в массиве
+                for (const parsed of parsedArray) {
+                    if (parsed.type === 'urltest') {
+                        if (!parsed.tag || !Array.isArray(parsed.outbounds) || parsed.outbounds.length === 0) {
+                            return _('For urltest type, JSON must contain tag and non-empty outbounds array');
+                        }
+                    } else if (!parsed.type || !parsed.server || !parsed.server_port) {
+                        return _('JSON must contain at least type, server and server_port fields');
+                    }
                 }
                 return true;
             } catch (e) {
@@ -680,28 +711,12 @@ return view.extend({
                     const formattedOutput = formatDiagnosticOutput(res.stdout || _('No output'));
 
                     const modalElement = ui.showModal(_('Full Diagnostic Results'), [
-                        E('div', {
-                            style:
-                                'max-height: 70vh;' +
-                                'overflow-y: auto;' +
-                                'margin: 1em 0;' +
-                                'padding: 1.5em;' +
-                                'background: #f8f9fa;' +
-                                'border: 1px solid #e9ecef;' +
-                                'border-radius: 4px;' +
-                                'font-family: monospace;' +
-                                'white-space: pre-wrap;' +
-                                'word-wrap: break-word;' +
-                                'line-height: 1.5;' +
-                                'font-size: 14px;'
-                        }, [
-                            E('pre', { style: 'margin: 0;' }, formattedOutput)
+                        E('div', { style: 'max-height: 70vh; overflow-y: auto;' }, [
+                            E('pre', { class: 'cbi-value-field' }, formattedOutput)
                         ]),
-                        E('div', {
-                            style: 'display: flex; justify-content: space-between; margin-top: 1em;'
-                        }, [
+                        E('div', { style: 'display: flex; justify-content: space-between; margin-top: 1em;' }, [
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-save',
                                 'click': function () {
                                     const textarea = document.createElement('textarea');
                                     textarea.value = '```txt\n' + formattedOutput + '\n```';
@@ -709,6 +724,7 @@ return view.extend({
                                     textarea.select();
                                     try {
                                         document.execCommand('copy');
+                                        ui.hideModal();
                                     } catch (err) {
                                         ui.addNotification(null, E('p', {}, _('Failed to copy: ') + err.message));
                                     }
@@ -716,16 +732,14 @@ return view.extend({
                                 }
                             }, _('Copy to Clipboard')),
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-neutral',
                                 'click': ui.hideModal
                             }, _('Close'))
                         ])
                     ], 'large');
 
                     if (modalElement && modalElement.parentElement) {
-                        modalElement.parentElement.style.width = '90%';
-                        modalElement.parentElement.style.maxWidth = '1200px';
-                        modalElement.parentElement.style.margin = '2rem auto';
+                        modalElement.parentElement.classList.add('modal-overlay-large');
                     }
                 });
         };
@@ -741,28 +755,12 @@ return view.extend({
                     const formattedOutput = formatDiagnosticOutput(res.stdout || _('No output'));
 
                     const modalElement = ui.showModal(_('System Logs'), [
-                        E('div', {
-                            style:
-                                'max-height: 70vh;' +
-                                'overflow-y: auto;' +
-                                'margin: 1em 0;' +
-                                'padding: 1.5em;' +
-                                'background: #f8f9fa;' +
-                                'border: 1px solid #e9ecef;' +
-                                'border-radius: 4px;' +
-                                'font-family: monospace;' +
-                                'white-space: pre-wrap;' +
-                                'word-wrap: break-word;' +
-                                'line-height: 1.5;' +
-                                'font-size: 14px;'
-                        }, [
-                            E('pre', { style: 'margin: 0;' }, formattedOutput)
+                        E('div', { style: 'max-height: 70vh; overflow-y: auto;' }, [
+                            E('pre', { class: 'cbi-value-field' }, formattedOutput)
                         ]),
-                        E('div', {
-                            style: 'display: flex; justify-content: space-between; margin-top: 1em;'
-                        }, [
+                        E('div', { style: 'display: flex; justify-content: space-between; margin-top: 1em;' }, [
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-save',
                                 'click': function () {
                                     const textarea = document.createElement('textarea');
                                     textarea.value = '```txt\n' + formattedOutput + '\n```';
@@ -770,6 +768,7 @@ return view.extend({
                                     textarea.select();
                                     try {
                                         document.execCommand('copy');
+                                        ui.hideModal();
                                     } catch (err) {
                                         ui.addNotification(null, E('p', {}, _('Failed to copy: ') + err.message));
                                     }
@@ -777,16 +776,14 @@ return view.extend({
                                 }
                             }, _('Copy to Clipboard')),
                             E('button', {
-                                'class': 'btn',
+                                'class': 'btn cbi-button-neutral',
                                 'click': ui.hideModal
                             }, _('Close'))
                         ])
                     ], 'large');
 
                     if (modalElement && modalElement.parentElement) {
-                        modalElement.parentElement.style.width = '90%';
-                        modalElement.parentElement.style.maxWidth = '1200px';
-                        modalElement.parentElement.style.margin = '2rem auto';
+                        modalElement.parentElement.classList.add('modal-overlay-large');
                     }
                 });
         };
@@ -808,6 +805,50 @@ return view.extend({
                     }, _('Close'))
                 ])
             ]);
+        };
+
+        o = s.taboption('diagnostics', form.Button, '_show_config');
+        o.title = _('Show Config');
+        o.description = _('Show current podkop configuration with masked sensitive data');
+        o.inputtitle = _('Show Config');
+        o.inputstyle = 'apply';
+        o.onclick = function () {
+            return fs.exec('/etc/init.d/podkop', ['show_config'])
+                .then(function (res) {
+                    const formattedOutput = formatDiagnosticOutput(res.stdout || _('No output'));
+
+                    const modalElement = ui.showModal(_('Podkop Configuration'), [
+                        E('div', { class: 'cbi-section' }, [
+                            E('pre', { class: 'cbi-value-field' }, formattedOutput)
+                        ]),
+                        E('div', { style: 'display: flex; justify-content: space-between; margin-top: 1em;' }, [
+                            E('button', {
+                                'class': 'btn cbi-button-save',
+                                'click': function () {
+                                    const textarea = document.createElement('textarea');
+                                    textarea.value = '```\n' + formattedOutput + '\n```';
+                                    document.body.appendChild(textarea);
+                                    textarea.select();
+                                    try {
+                                        document.execCommand('copy');
+                                        ui.hideModal();
+                                    } catch (err) {
+                                        ui.addNotification(null, E('p', {}, _('Failed to copy: ') + err.message));
+                                    }
+                                    document.body.removeChild(textarea);
+                                }
+                            }, _('Copy to Clipboard')),
+                            E('button', {
+                                'class': 'btn cbi-button-neutral',
+                                'click': ui.hideModal
+                            }, _('Close'))
+                        ])
+                    ], 'large');
+
+                    if (modalElement && modalElement.parentElement) {
+                        modalElement.parentElement.classList.add('modal-overlay-large');
+                    }
+                });
         };
 
         return m.render();
