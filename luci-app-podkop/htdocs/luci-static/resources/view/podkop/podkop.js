@@ -55,9 +55,19 @@ return view.extend({
             }
 
             try {
-                const parsed = JSON.parse(value);
-                if (!parsed.type || !parsed.server || !parsed.server_port) {
-                    return _('JSON must contain at least type, server and server_port fields');
+                // Оборачиваем множественные JSON объекты в массив для валидации
+                const wrappedValue = `[${value}]`;
+                const parsedArray = JSON.parse(wrappedValue);
+
+                // Проверяем каждый объект в массиве
+                for (const parsed of parsedArray) {
+                    if (parsed.type === 'urltest') {
+                        if (!parsed.tag || !Array.isArray(parsed.outbounds) || parsed.outbounds.length === 0) {
+                            return _('For urltest type, JSON must contain tag and non-empty outbounds array');
+                        }
+                    } else if (!parsed.type || !parsed.server || !parsed.server_port) {
+                        return _('JSON must contain at least type, server and server_port fields');
+                    }
                 }
                 return true;
             } catch (e) {
@@ -480,9 +490,19 @@ return view.extend({
             }
 
             try {
-                const parsed = JSON.parse(value);
-                if (!parsed.type || !parsed.server || !parsed.server_port) {
-                    return _('JSON must contain at least type, server and server_port fields');
+                // Оборачиваем множественные JSON объекты в массив для валидации
+                const wrappedValue = `[${value}]`;
+                const parsedArray = JSON.parse(wrappedValue);
+
+                // Проверяем каждый объект в массиве
+                for (const parsed of parsedArray) {
+                    if (parsed.type === 'urltest') {
+                        if (!parsed.tag || !Array.isArray(parsed.outbounds) || parsed.outbounds.length === 0) {
+                            return _('For urltest type, JSON must contain tag and non-empty outbounds array');
+                        }
+                    } else if (!parsed.type || !parsed.server || !parsed.server_port) {
+                        return _('JSON must contain at least type, server and server_port fields');
+                    }
                 }
                 return true;
             } catch (e) {

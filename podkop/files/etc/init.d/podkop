@@ -924,8 +924,13 @@ sing_box_config_outbound_json() {
 }
 EOF
 
-    jq --argjson outbound "$json_config" '.outbounds += [$outbound]' /tmp/base_config.json > $SING_BOX_CONFIG
-    rm -f /tmp/base_config.json
+    # Оборачиваем множественные JSON объекты в массив и добавляем их в outbounds
+    echo "[${json_config}]" | jq -c '.[]' | while read -r outbound; do
+        jq --argjson outbound "$outbound" '.outbounds += [$outbound]' /tmp/base_config.json > /tmp/sing-box-config-tmp.json
+        mv /tmp/sing-box-config-tmp.json /tmp/base_config.json
+    done
+
+    mv /tmp/base_config.json $SING_BOX_CONFIG
 }
 
 sing_box_uci() {
