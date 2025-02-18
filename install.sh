@@ -91,18 +91,12 @@ add_tunnel() {
     echo "5) OpenConnect"
     echo "6) Skip this step"
 
-    # Устанавливаем таймаут для ввода (например, 5 секунд)
-    read -r -t 0 -p "Press Enter to choose the default option (1) or enter your choice: " TUNNEL
-
-    # Если пользователь не ввел ничего, выбираем пункт 1 по умолчанию
-    if [ -z "$TUNNEL" ]; then
-        TUNNEL=1
-    fi
-
+    TUNNEL=1
     case $TUNNEL in
 
     1)
         opkg install sing-box
+        break
         ;;
 
     2)
@@ -116,6 +110,8 @@ add_tunnel() {
         else
             printf "\e[1;32mUse these instructions to manual configure https://itdog.info/nastrojka-klienta-wireguard-na-openwrt/\e[0m\n"
         fi
+
+        break
         ;;
 
     3)
@@ -127,24 +123,29 @@ add_tunnel() {
         if [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "y" ] || [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "Y" ]; then
             wg_awg_setup AmneziaWG
         fi
+
+        break
         ;;
 
     4)
         opkg install openvpn-openssl luci-app-openvpn
         printf "\e[1;32mUse these instructions to configure https://itdog.info/nastrojka-klienta-openvpn-na-openwrt/\e[0m\n"
+        break
         ;;
 
     5)
         opkg install openconnect luci-proto-openconnect
         printf "\e[1;32mUse these instructions to configure https://itdog.info/nastrojka-klienta-openconnect-na-openwrt/\e[0m\n"
+        break
         ;;
 
     6)
         echo "Skip. Use this if you're installing an upgrade."
+        break
         ;;
 
     *)
-        echo "Invalid option. Please choose from the following options"
+        echo "Choose from the following options"
         ;;
     esac
 }
