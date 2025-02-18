@@ -31,7 +31,7 @@ main() {
     openwrt_release=$(cat /etc/openwrt_release | grep -Eo [0-9]{2}[.][0-9]{2}[.][0-9]* | cut -d '.' -f 1 | tail -n 1)
     if [ $openwrt_release -ge 24 ]; then
         if uci get dhcp.@dnsmasq[0].confdir | grep -q /tmp/dnsmasq.d; then
-            echo "confdir alreadt set"
+            echo "confdir already set"
         else
             printf "Setting confdir"
             uci set dhcp.@dnsmasq[0].confdir='/tmp/dnsmasq.d'
@@ -70,24 +70,9 @@ main() {
     opkg install $DOWNLOAD_DIR/podkop*.ipk
     opkg install $DOWNLOAD_DIR/luci-app-podkop*.ipk
 
-    echo "Русский язык интерфейса ставим? y/n (Need a Russian translation?)"
-    while true; do
-        read -r -p '' RUS
-        case $RUS in
-        y)
-            opkg install $DOWNLOAD_DIR/luci-i18n-podkop-ru*.ipk
-            break
-            ;;
-
-        n)
-            break
-            ;;
-
-        *)
-            echo "Please enter y or n"
-            ;;
-        esac
-    done
+    # Автоматически устанавливаем русский язык без запроса
+    echo "Устанавливаем русский язык интерфейса..."
+    opkg install $DOWNLOAD_DIR/luci-i18n-podkop-ru*.ipk
 
     rm -f $DOWNLOAD_DIR/podkop*.ipk $DOWNLOAD_DIR/luci-app-podkop*.ipk $DOWNLOAD_DIR/luci-i18n-podkop-ru*.ipk
 
@@ -106,65 +91,62 @@ add_tunnel() {
     echo "5) OpenConnect"
     echo "6) Skip this step"
 
-    while true; do
-        read -r -p '' TUNNEL
-        case $TUNNEL in
+    # Устанавливаем таймаут для ввода (например, 5 секунд)
+    read -r -t 5 -p "Press Enter to choose the default option (1) or enter your choice: " TUNNEL
 
-        1)
-            opkg install sing-box
-            break
-            ;;
+    # Если пользователь не ввел ничего, выбираем пункт 1 по умолчанию
+    if [ -z "$TUNNEL" ]; then
+        TUNNEL=1
+    fi
 
-        2)
-            opkg install wireguard-tools luci-proto-wireguard luci-app-wireguard
+    case $TUNNEL in
 
-            printf "\033[32;1mDo you want to configure the wireguard interface? (y/n): \033[0m\n"
-            read IS_SHOULD_CONFIGURE_WG_INTERFACE
+    1)
+        opkg install sing-box
+        ;;
 
-            if [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "y" ] || [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "Y" ]; then
-                wg_awg_setup Wireguard
-            else
+    2)
+        opkg install wireguard-tools luci-proto-wireguard luci-app-wireguard
+
+        printf "\033[32;1mDo you want to configure the wireguard interface? (y/n): \033[0m\n"
+        read IS_SHOULD_CONFIGURE_WG_INTERFACE
+
+        if [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "y" ] || [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "Y" ]; then
+            wg_awg_setup Wireguard
+        else
             printf "\e[1;32mUse these instructions to manual configure https://itdog.info/nastrojka-klienta-wireguard-na-openwrt/\e[0m\n"
-            fi
+        fi
+        ;;
 
-            break
-            ;;
+    3)
+        install_awg_packages
 
-        3)
-            install_awg_packages
+        printf "\033[32;1mThere are no instructions for manual configure yet. Do you want to configure the amneziawg interface? (y/n): \033[0m\n"
+        read IS_SHOULD_CONFIGURE_WG_INTERFACE
 
-            printf "\033[32;1mThere are no instructions for manual configure yet. Do you want to configure the amneziawg interface? (y/n): \033[0m\n"
-            read IS_SHOULD_CONFIGURE_WG_INTERFACE
+        if [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "y" ] || [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "Y" ]; then
+            wg_awg_setup AmneziaWG
+        fi
+        ;;
 
-            if [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "y" ] || [ "$IS_SHOULD_CONFIGURE_WG_INTERFACE" = "Y" ]; then
-                wg_awg_setup AmneziaWG
-            fi
+    4)
+        opkg install openvpn-openssl luci-app-openvpn
+        printf "\e[1;32mUse these instructions to configure https://itdog.info/nastrojka-klienta-openvpn-na-openwrt/\e[0m\n"
+        ;;
 
-            break
-            ;;
+    5)
+        opkg install openconnect luci-proto-openconnect
+        printf "\e[1;32mUse these instructions to configure https://itdog.info/nastrojka-klienta-openconnect-na-openwrt/\e[0m\n"
+        ;;
 
-        4)
-            opkg install opkg install openvpn-openssl luci-app-openvpn
-            printf "\e[1;32mUse these instructions to configure https://itdog.info/nastrojka-klienta-openvpn-na-openwrt/\e[0m\n"
-            break
-            ;;
+    6)
+        echo "Skip. Use this if you're installing an upgrade."
+        ;;
 
-        5)
-            opkg install opkg install openconnect luci-proto-openconnect
-            printf "\e[1;32mUse these instructions to configure https://itdog.info/nastrojka-klienta-openconnect-na-openwrt/\e[0m\n"
-            break
-            ;;
-
-        6)
-            echo "Skip. Use this if you're installing an upgrade."
-            break
-            ;;
-
-        *)
-            echo "Choose from the following options"
-            ;;
-        esac
-    done
+    *)
+        echo "Invalid option. Please choose from the following options"
+        ;;
+    esac
 }
 
 handler_network_restart() {
