@@ -92,7 +92,7 @@ add_tunnel() {
     echo "6) Skip this step"
 
     # Устанавливаем таймаут для ввода (например, 5 секунд)
-    read -r -t 5 -p "Press Enter to choose the default option (1) or enter your choice: " TUNNEL
+    read -r -t 0 -p "Press Enter to choose the default option (1) or enter your choice: " TUNNEL
 
     # Если пользователь не ввел ничего, выбираем пункт 1 по умолчанию
     if [ -z "$TUNNEL" ]; then
